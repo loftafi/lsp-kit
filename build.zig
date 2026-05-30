@@ -118,11 +118,13 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(hello_client_exe);
 
     const run_hello_client = b.addRunArtifact(hello_client_exe);
-    if (b.args) |args| {
-        run_hello_client.addArgs(args);
-        if (args.len == 1) {
-            run_hello_client.addArtifactArg(hello_server_exe);
-        }
+    run_hello_client.addPassthruArgs();
+
+    const server_path_opt = b.option([]const u8, "server_path", "Set server path for run-hello-client");
+    if (server_path_opt) |server_path| {
+        run_hello_client.addArg(server_path);
+    } else {
+        run_hello_client.addArtifactArg(hello_server_exe);
     }
 
     const run_hello_client_step = b.step("run-hello-client", "Run the hello-client example");
@@ -166,17 +168,19 @@ pub fn build(b: *std.Build) void {
 
     // ----------------------------- Code Coverage -----------------------------
 
-    const kcov_bin = b.findProgram(&.{"kcov"}, &.{}) catch "kcov";
+    const kcov_bin = b.findProgramLazy(.{
+        .names = &.{"kcov"},
+    });
 
     const kcov_merge = std.Build.Step.Run.create(b, "kcov merge coverage");
     kcov_merge.rename_step_with_output_arg = false;
-    kcov_merge.addArg(kcov_bin);
+    kcov_merge.addFileArg(kcov_bin);
     kcov_merge.addArg("--merge");
     const coverage_output = kcov_merge.addOutputDirectoryArg(".");
 
     for ([_]*std.Build.Step.Compile{ lsp_tests, lsp_parser_tests }) |test_artifact| {
         const kcov_collect = std.Build.Step.Run.create(b, "kcov collect coverage");
-        kcov_collect.addArg(kcov_bin);
+        kcov_collect.addFileArg(kcov_bin);
         kcov_collect.addArg("--collect-only");
         kcov_collect.addPrefixedDirectoryArg("--include-path=", b.path("."));
         kcov_merge.addDirectoryArg(kcov_collect.addOutputDirectoryArg(test_artifact.name));
