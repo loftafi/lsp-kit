@@ -14,11 +14,6 @@
 //! zig build run-hello-client -- path/to/unformatted/file.zig /path/to/zls
 //! ```
 //!
-//! Omitting the arguments to the language server will use `./hello_server.zig` as the language server:
-//! ```
-//! zig build run-hello-client -- path/to/unformatted/file.zig
-//! ```
-//!
 //! See the `usage` below for more information.
 //!
 

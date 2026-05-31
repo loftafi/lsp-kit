@@ -120,13 +120,6 @@ pub fn build(b: *std.Build) void {
     const run_hello_client = b.addRunArtifact(hello_client_exe);
     run_hello_client.addPassthruArgs();
 
-    const server_path_opt = b.option([]const u8, "server_path", "Set server path for run-hello-client");
-    if (server_path_opt) |server_path| {
-        run_hello_client.addArg(server_path);
-    } else {
-        run_hello_client.addArtifactArg(hello_server_exe);
-    }
-
     const run_hello_client_step = b.step("run-hello-client", "Run the hello-client example");
     run_hello_client_step.dependOn(&run_hello_client.step);
 
