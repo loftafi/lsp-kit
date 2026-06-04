@@ -16,9 +16,9 @@ pub fn UnionParser(comptime T: type) type {
         }
 
         pub fn jsonParseFromValue(allocator: std.mem.Allocator, source: std.json.Value, options: std.json.ParseOptions) std.json.ParseFromValueError!T {
-            inline for (std.meta.fields(T)) |field| {
-                if (std.json.parseFromValueLeaky(field.type, allocator, source, options)) |result| {
-                    return @unionInit(T, field.name, result);
+            inline for (comptime std.meta.fieldNames(T), comptime std.meta.fieldTypes(T)) |field_name, FieldType| {
+                if (std.json.parseFromValueLeaky(FieldType, allocator, source, options)) |result| {
+                    return @unionInit(T, field_name, result);
                 } else |_| {}
             }
             return error.UnexpectedToken;
@@ -115,13 +115,13 @@ pub fn EnumCustomStringValues(comptime T: type, comptime contains_empty_enum: bo
 
         const kvs = build_kvs: {
             const KV = struct { []const u8, T };
-            const fields = std.meta.fields(T);
-            var kvs_array: [fields.len - 1]KV = undefined;
-            for (fields[0 .. fields.len - 1], &kvs_array) |field, *kv| {
-                if (contains_empty_enum and std.mem.eql(u8, field.name, "empty")) {
+            const field_names = std.meta.fieldNames(T);
+            var kvs_array: [field_names.len - 1]KV = undefined;
+            for (field_names[0 .. field_names.len - 1], &kvs_array) |field_name, *kv| {
+                if (contains_empty_enum and std.mem.eql(u8, field_name, "empty")) {
                     kv.* = .{ "", T.empty };
                 } else {
-                    kv.* = .{ field.name, @field(T, field.name) };
+                    kv.* = .{ field_name, @field(T, field_name) };
                 }
             }
             break :build_kvs kvs_array;

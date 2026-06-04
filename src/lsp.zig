@@ -207,10 +207,10 @@ pub const JsonRPCMessage = union(enum) {
         var fields: Fields = .{};
 
         for (source.object.keys(), source.object.values()) |field_name, field_source| {
-            inline for (std.meta.fields(Fields)) |field| {
-                const field_enum = comptime @field(std.meta.FieldEnum(Fields), field.name);
-                if (std.mem.eql(u8, field.name, field_name)) {
-                    @field(fields, field.name) = try Fields.parseFromValue(field_enum, allocator, field_source, options);
+            inline for (comptime std.meta.fieldNames(Fields)) |name| {
+                if (std.mem.eql(u8, name, field_name)) {
+                    const field_enum = comptime @field(std.meta.FieldEnum(Fields), name);
+                    @field(fields, name) = try Fields.parseFromValue(field_enum, allocator, field_source, options);
                     break;
                 }
             } else {
@@ -2138,18 +2138,19 @@ pub fn Message(
             comptime Source: type,
         ) std.StaticStringMap(ParamsParserFunc(Params, Source)) {
             comptime {
-                const fields = std.meta.fields(Params);
+                const field_names = std.meta.fieldNames(Params);
+                const field_types = std.meta.fieldTypes(Params);
 
-                var kvs_list: [fields.len - 1]struct { []const u8, ParamsParserFunc(Params, Source) } = undefined;
+                var kvs_list: [field_names.len - 1]struct { []const u8, ParamsParserFunc(Params, Source) } = undefined;
 
                 var i: usize = 0;
-                for (fields) |field| {
-                    if (std.mem.eql(u8, field.name, "other"))
+                for (field_names, field_types) |field_name, FieldType| {
+                    if (std.mem.eql(u8, field_name, "other"))
                         continue;
 
                     const parse_func = struct {
                         fn parse(params_source: Source, allocator: std.mem.Allocator, options: std.json.ParseOptions) !Params {
-                            if (field.type == void) {
+                            if (FieldType == void) {
                                 switch (Source) {
                                     std.json.Value => if (params_source != .null) {
                                         return error.UnexpectedToken;
@@ -2160,17 +2161,17 @@ pub fn Message(
                                         std.debug.assert(try params_source.next() == .null);
                                     },
                                 }
-                                return @unionInit(Params, field.name, if (field.type == void) {} else null);
+                                return @unionInit(Params, field_name, if (FieldType == void) {} else null);
                             }
                             const params = switch (Source) {
-                                std.json.Value => try std.json.innerParseFromValue(field.type, allocator, params_source, options),
-                                else => try std.json.innerParse(field.type, allocator, params_source, options),
+                                std.json.Value => try std.json.innerParseFromValue(FieldType, allocator, params_source, options),
+                                else => try std.json.innerParse(FieldType, allocator, params_source, options),
                             };
-                            return @unionInit(Params, field.name, params);
+                            return @unionInit(Params, field_name, params);
                         }
                     }.parse;
 
-                    kvs_list[i] = .{ field.name, parse_func };
+                    kvs_list[i] = .{ field_name, parse_func };
                     i += 1;
                 }
 
