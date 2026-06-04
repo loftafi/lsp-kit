@@ -619,9 +619,9 @@ fn MessageType(comptime Handler: type) type {
     ) |isMethod, Params| {
         var methods: []const [:0]const u8 = &.{};
 
-        for (std.meta.declarations(Handler)) |decl| {
-            if (isMethod(decl.name)) {
-                methods = methods ++ [1][:0]const u8{decl.name};
+        for (std.meta.declarations(Handler)) |decl_name| {
+            if (isMethod(decl_name)) {
+                methods = methods ++ [1][:0]const u8{decl_name};
             }
         }
 
@@ -677,12 +677,12 @@ fn callHandler(
         else => comptime unreachable,
     };
 
-    if (fn_info.params.len >= 1) switch (fn_info.params[0].type.?) {
+    if (fn_info.param_types.len >= 1) switch (fn_info.param_types[0].?) {
         Handler, *Handler, *const Handler => {},
         else => return @call(.auto, func, args),
     } else return @call(.auto, func, args);
 
-    return switch (fn_info.params[0].type.?) {
+    return switch (fn_info.param_types[0].?) {
         Handler => @call(.auto, func, .{handler_ptr.*} ++ args),
         *Handler, *const Handler => @call(.auto, func, .{handler_ptr} ++ args),
         else => comptime unreachable,
